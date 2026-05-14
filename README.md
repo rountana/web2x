@@ -1,4 +1,4 @@
-# web2x — Web to Anything
+# WEB2X — Web to Anything
 
 Turn any article or webpage into flashcards, quizzes, and summaries using AI. Paste a URL and web2x extracts the content, sends it through Google Gemini, and gives you ready-to-study learning materials — no account required.
 
