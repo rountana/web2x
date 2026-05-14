@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+*.tsbuildinfo
+.DS_Store
+.turbo/
+notes.md
+techdebt.md
+.env.prod.example
+.claude/

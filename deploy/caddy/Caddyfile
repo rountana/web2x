@@ -1,0 +1,16 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	root * /srv
+	file_server
+
+	# Proxy API — flush_interval -1 enables SSE streaming (used by chat)
+	reverse_proxy /api/* api:3001 {
+		flush_interval -1
+	}
+
+	# SPA fallback: unknown paths serve index.html
+	try_files {path} /index.html
+}

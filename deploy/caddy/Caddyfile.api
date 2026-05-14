@@ -1,0 +1,10 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	# flush_interval -1 enables SSE streaming (used by chat)
+	reverse_proxy api:3001 {
+		flush_interval -1
+	}
+}

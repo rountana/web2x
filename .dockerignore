@@ -1,0 +1,25 @@
+.git
+.github
+.claude
+.DS_Store
+
+# Dependencies and build outputs (rebuilt inside Docker)
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+
+# Env files (secrets must come from env vars at runtime)
+**/.env
+**/.env.local
+**/.env.prod
+
+# Python MLX venv (large, not needed for Node builds)
+apps/mlx/.venv
+apps/mlx/__pycache__
+apps/mlx/**/*.pyc
+
+# Dev artifacts
+apps/api/uploads
+docs
+techdebt.md
+README.md
