@@ -7,6 +7,8 @@ on:
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -33,19 +35,3 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: apps/web/dist
           cname: ${{ vars.GH_PAGES_CNAME }}
-
-  deploy-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.GCP_HOST }}
-          username: ${{ secrets.GCP_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          script: |
-            set -e
-            cd /opt/web2x
-            git pull origin main
-            docker compose -f docker-compose.api.yml build
-            docker compose -f docker-compose.api.yml up -d
-            docker image prune -f
