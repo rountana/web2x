@@ -136,7 +136,7 @@ export interface CreateArticleRequest {
 
 export interface CreateArticleResponse {
   id: string;
-  status: 'pending';
+  status: ArticleStatus;
 }
 
 export interface IngestMarkdownRequest {

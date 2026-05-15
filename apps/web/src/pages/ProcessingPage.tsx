@@ -1,15 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useArticle, useArticleChunkStatus } from '@/hooks/useArticle';
+import { useArticle, useArticleChunkStatus, useRetryArticle } from '@/hooks/useArticle';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+
+const STALL_THRESHOLD_MS = 60_000;
 
 export function ProcessingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: chunkStatus } = useArticleChunkStatus(id!);
   const { data: article, error } = useArticle(id!, chunkStatus?.count);
+  const { mutate: retry, isPending: retryPending, error: retryError } = useRetryArticle();
+  const [stalled, setStalled] = useState(false);
 
   const chunkCount = chunkStatus?.count ?? 0;
   const isExtracting = !article || article.status === 'pending';
@@ -21,6 +25,15 @@ export function ProcessingPage() {
     }
   }, [article?.status, chunkCount, id, navigate]);
 
+  useEffect(() => {
+    if (!isExtracting) {
+      setStalled(false);
+      return;
+    }
+    const timer = setTimeout(() => setStalled(true), STALL_THRESHOLD_MS);
+    return () => clearTimeout(timer);
+  }, [isExtracting, id]);
+
   if (article?.status === 'failed' || error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -30,7 +43,19 @@ export function ProcessingPage() {
           <p className="text-sm text-muted-foreground mb-4">
             {article?.errorMessage ?? 'Could not extract content from this source.'}
           </p>
-          <Button onClick={() => navigate('/')}>Try another</Button>
+          {retryError && (
+            <p className="text-xs text-destructive mb-3">{(retryError as Error).message}</p>
+          )}
+          <div className="flex gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={() => id && retry(id)}
+              disabled={retryPending}
+            >
+              {retryPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Retry'}
+            </Button>
+            <Button onClick={() => navigate('/')}>Try another</Button>
+          </div>
         </div>
       </div>
     );
@@ -60,6 +85,31 @@ export function ProcessingPage() {
         <p className="text-xs text-muted-foreground">
           {isIndexing ? 'Building search index…' : 'Extracting article…'}
         </p>
+        {stalled && isExtracting && (
+          <div className="mt-4 text-center">
+            <p className="text-xs text-muted-foreground mb-2">
+              Taking longer than expected. The source may be slow or blocking us.
+            </p>
+            {retryError && (
+              <p className="text-xs text-destructive mb-2">{(retryError as Error).message}</p>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => id && retry(id)}
+              disabled={retryPending}
+            >
+              {retryPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                  Retry extraction
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

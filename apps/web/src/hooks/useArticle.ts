@@ -11,7 +11,7 @@ export function useArticle(id: string, chunkCount?: number) {
       const status = query.state.data?.status;
       // Poll while extracting; also poll while ready-but-unchunked so we detect final failure.
       if (status === 'pending') return 2000;
-      if (status === 'ready' && chunkCount === 0) return 3000;
+      if (status === 'ready' && (chunkCount ?? 0) === 0) return 3000;
       return false;
     },
     enabled: !!id,
@@ -82,5 +82,19 @@ export function useArticleChunkStatus(id: string) {
     enabled: !!id,
     refetchInterval: (query) =>
       (query.state.data?.count ?? 0) === 0 ? 3000 : false,
+  });
+}
+
+export function useRetryArticle() {
+  const queryClient = useQueryClient();
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+
+  return useMutation({
+    mutationFn: (id: string) => api.articles.retry(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['article', id] });
+      queryClient.invalidateQueries({ queryKey: ['article-chunks', id] });
+      queryClient.invalidateQueries({ queryKey: ['articles', activeWorkspaceId] });
+    },
   });
 }

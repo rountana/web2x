@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { useArticle } from '@/hooks/useArticle';
+import { useArticle, useRetryArticle } from '@/hooks/useArticle';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api, getAnonId, getWorkspaceId } from '@/lib/api';
 import { useState } from 'react';
-import { ArrowLeft, Layers, HelpCircle, FileText, Share2, Loader2, BookOpen, MessageSquare, AlertCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Layers, HelpCircle, FileText, Share2, Loader2, BookOpen, MessageSquare, AlertCircle, RefreshCw, Trash2 } from 'lucide-react';
 
 export function ArticleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,7 +14,10 @@ export function ArticleDetailPage() {
   const { data: article, isLoading } = useArticle(id!);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const { mutate: retry, isPending: retryPending, error: retryError } = useRetryArticle();
   const extractionFailed = article?.status === 'failed';
+  const extractionPending = article?.status === 'pending';
+  const canRetry = !!article?.sourceUrl && (extractionFailed || extractionPending);
 
   async function handleDelete() {
     if (!id) return;
@@ -93,19 +96,72 @@ export function ArticleDetailPage() {
         {extractionFailed && (
           <div className="flex items-start gap-3 p-3 mb-4 rounded-md bg-destructive/10 text-destructive">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <div>
+            <div className="flex-1">
               <p className="text-sm font-medium">Content extraction failed</p>
               <p className="text-xs mt-0.5 opacity-80">
                 {article.errorMessage ?? 'Could not extract content. Learning features are unavailable.'}
               </p>
+              {retryError && (
+                <p className="text-xs mt-1 opacity-80">{(retryError as Error).message}</p>
+              )}
+              {canRetry && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7"
+                  onClick={() => id && retry(id)}
+                  disabled={retryPending}
+                >
+                  {retryPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-1.5" />
+                      Retry extraction
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         )}
-        <h1 className="text-xl font-bold mb-1">{article.title}</h1>
+        {extractionPending && (
+          <div className="flex items-start gap-3 p-3 mb-4 rounded-md bg-muted text-muted-foreground">
+            <Loader2 className="h-4 w-4 mt-0.5 shrink-0 animate-spin" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Still extracting…</p>
+              <p className="text-xs mt-0.5">
+                If this has been stuck for a while, the source may be slow or blocking us.
+              </p>
+              {retryError && (
+                <p className="text-xs mt-1 text-destructive">{(retryError as Error).message}</p>
+              )}
+              {canRetry && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7"
+                  onClick={() => id && retry(id)}
+                  disabled={retryPending}
+                >
+                  {retryPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-1.5" />
+                      Retry extraction
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        <h1 className="text-xl font-bold mb-1">{article.title || article.sourceUrl}</h1>
         <p className="text-sm text-muted-foreground mb-6">
           {article.wordCount.toLocaleString()} words
         </p>
-        {!extractionFailed && (
+        {!extractionFailed && !extractionPending && (
           <div className="prose prose-sm max-w-none">
             <ReactMarkdown>{article.markdownContent}</ReactMarkdown>
           </div>
@@ -118,7 +174,7 @@ export function ArticleDetailPage() {
             variant="outline"
             className="flex-1 flex-col h-auto py-2 gap-1"
             onClick={() => navigate(`/articles/${id}/flashcards`)}
-            disabled={extractionFailed}
+            disabled={extractionFailed || extractionPending}
           >
             <Layers className="h-4 w-4" />
             <span className="text-xs">Flashcards</span>
@@ -127,7 +183,7 @@ export function ArticleDetailPage() {
             variant="outline"
             className="flex-1 flex-col h-auto py-2 gap-1"
             onClick={() => navigate(`/articles/${id}/quiz`)}
-            disabled={extractionFailed}
+            disabled={extractionFailed || extractionPending}
           >
             <HelpCircle className="h-4 w-4" />
             <span className="text-xs">Quiz</span>
@@ -136,7 +192,7 @@ export function ArticleDetailPage() {
             variant="outline"
             className="flex-1 flex-col h-auto py-2 gap-1"
             onClick={() => navigate(`/articles/${id}/summary`)}
-            disabled={extractionFailed}
+            disabled={extractionFailed || extractionPending}
           >
             <Share2 className="h-4 w-4" />
             <span className="text-xs">Summary</span>
@@ -145,7 +201,7 @@ export function ArticleDetailPage() {
             variant="outline"
             className="flex-1 flex-col h-auto py-2 gap-1"
             onClick={handlePdf}
-            disabled={pdfLoading || extractionFailed}
+            disabled={pdfLoading || extractionFailed || extractionPending}
           >
             {pdfLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -161,7 +217,7 @@ export function ArticleDetailPage() {
               const params = new URLSearchParams({ anonId: getAnonId(), workspaceId: getWorkspaceId() ?? '' });
               window.open(`/api/v1/articles/${id}/md?${params}`, '_blank');
             }}
-            disabled={extractionFailed}
+            disabled={extractionFailed || extractionPending}
           >
             <BookOpen className="h-4 w-4" />
             <span className="text-xs">View .md</span>
@@ -170,7 +226,7 @@ export function ArticleDetailPage() {
             variant="outline"
             className="flex-1 flex-col h-auto py-2 gap-1"
             onClick={() => navigate(`/chat?articleId=${id}`)}
-            disabled={extractionFailed}
+            disabled={extractionFailed || extractionPending}
           >
             <MessageSquare className="h-4 w-4" />
             <span className="text-xs">Chat</span>

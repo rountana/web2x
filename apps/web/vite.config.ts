@@ -47,20 +47,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            urlPattern: /^https?:\/\/.*\/api\/v1\/articles\/[^/]+$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'articles-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
-              },
-              cacheableResponse: {
-                statuses: [200],
-              },
-            },
-          },
-          {
             urlPattern: /^https?:\/\/.*\/api\/v1\/articles\/[^/]+\/(deck|quiz|summary)$/,
             handler: 'CacheFirst',
             options: {

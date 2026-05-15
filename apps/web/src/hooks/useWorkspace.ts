@@ -116,6 +116,9 @@ export function useBootstrapWorkspace() {
         if (!cancelled) setBootstrapped(true);
       } catch (err) {
         console.error('[Bootstrap] Failed to initialize workspace:', err);
+        // If a workspace was persisted from a previous session, let the app
+        // render with it rather than hanging on the spinner indefinitely.
+        if (!cancelled && activeWorkspaceId) setBootstrapped(true);
       }
     }
 

@@ -21,6 +21,22 @@ articlesRouter.post('/', async (c) => {
   await validateAndSanitizeUrl(parsed.data.url);
 
   const workspace = c.get('workspace');
+
+  const [existing] = await db
+    .select({ id: articles.id, status: articles.status })
+    .from(articles)
+    .where(
+      and(
+        eq(articles.workspaceId, workspace.id),
+        eq(articles.sourceUrl, parsed.data.url),
+      ),
+    )
+    .limit(1);
+
+  if (existing && existing.status !== 'failed') {
+    return c.json<CreateArticleResponse>({ id: existing.id, status: existing.status }, 200);
+  }
+
   const [article] = await db
     .insert(articles)
     .values({ sourceUrl: parsed.data.url, userId: workspace.userId, workspaceId: workspace.id })
@@ -84,6 +100,28 @@ articlesRouter.get('/:id/chunks', async (c) => {
     .from(articleChunks)
     .where(and(eq(articleChunks.articleId, id), isNotNull(articleChunks.embedding)));
   return c.json({ count: Number(total) });
+});
+
+articlesRouter.post('/:id/retry', async (c) => {
+  const workspace = c.get('workspace');
+  const id = c.req.param('id');
+  const [row] = await db
+    .select({ sourceUrl: articles.sourceUrl })
+    .from(articles)
+    .where(and(eq(articles.id, id), eq(articles.workspaceId, workspace.id)));
+  if (!row) throw new NotFoundError('Article');
+  if (!row.sourceUrl) {
+    throw new ValidationError('Cannot retry articles ingested without a source URL');
+  }
+
+  await db
+    .update(articles)
+    .set({ status: 'pending', errorMessage: null, wordCount: 0, extractedAt: null })
+    .where(and(eq(articles.id, id), eq(articles.workspaceId, workspace.id)));
+
+  await addExtractionJob(id, row.sourceUrl);
+
+  return c.json({ id, status: 'pending' as const });
 });
 
 articlesRouter.delete('/:id', async (c) => {

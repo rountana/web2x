@@ -143,6 +143,9 @@ export const api = {
 
     chunkStatus: (id: string) => request<{ count: number }>(`/articles/${id}/chunks`),
 
+    retry: (id: string) =>
+      request<{ id: string; status: 'pending' }>(`/articles/${id}/retry`, { method: 'POST' }),
+
     delete: (id: string) => request<void>(`/articles/${id}`, { method: 'DELETE' }),
   },
 
