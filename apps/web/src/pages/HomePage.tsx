@@ -163,16 +163,14 @@ export function HomePage() {
           <WorkspaceSwitcher />
         </div>
         <div className="flex items-center gap-2">
-          {import.meta.env.DEV && (
-            <button
-              onClick={() => navigate('/dev/search')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors text-sm font-medium text-amber-700"
-              title="Developer Search Lab"
-            >
-              <FlaskConical className="h-4 w-4" />
-              Search Lab
-            </button>
-          )}
+          <button
+            onClick={() => navigate('/dev/search')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors text-sm font-medium text-amber-700"
+            title="Search Lab"
+          >
+            <FlaskConical className="h-4 w-4" />
+            Search Lab
+          </button>
           <button
             onClick={() => navigate('/chat')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border hover:bg-accent transition-colors text-sm font-medium"
